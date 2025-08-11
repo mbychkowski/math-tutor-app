@@ -35,3 +35,9 @@ venv/
 # IDE / Editor specific
 .idea/
 .vscode/
+
+# GradIO
+.gradio
+
+# misc
+scripts/

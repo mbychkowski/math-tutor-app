@@ -1,3 +1,4 @@
 gradio
 google-cloud-aiplatform
 httpx
+python-dotenv

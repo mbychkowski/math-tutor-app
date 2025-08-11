@@ -41,7 +41,7 @@ python3 -m venv .venv
 # On macOS and Linux:
 source .venv/bin/activate
 # On Windows:
-# venv\Scripts\activate
+# .venv\Scripts\activate
 ```
 
 ### 3. Install Dependencies
@@ -64,42 +64,22 @@ gcloud auth application-default login
 
 ## Configuration
 
-This is the most important step. You must configure the application to point to your specific models and cloud project.
+This is the most important step. All configuration is handled via a `.env` file to keep your secrets and settings out of the source code.
 
-Open the `app.py` file and edit the configuration variables at the top of the file.
+1.  **Create your `.env` file**:
+    Copy the example file to create your own local configuration file. The `.env` file is listed in `.gitignore` and will not be committed to your repository.
+    ```bash
+    cp .env.example .env
+    ```
 
-### General Configuration
+2.  **Edit the `.env` file**:
+    Open the newly created `.env` file and fill in the values for your Google Cloud project and model endpoints.
 
-```python
-# The Google Cloud project ID where your models are hosted.
-GCP_PROJECT_ID = "your-gcp-project-id-here"
-
-# The Google Cloud location for your project.
-GCP_LOCATION = "us-central1"
-```
-
-### Vertex AI Custom Endpoint
-
-If you plan to use a custom model deployed on a Vertex AI Endpoint, you must provide its ID. You can find this in the Google Cloud Console under **Vertex AI > Endpoints**.
-
-```python
-# The ID of your deployed custom model endpoint in Vertex AI
-VERTEX_AI_CUSTOM_ENDPOINT_ID = "1234567890123456789"
-```
-
-### GKE Self-Hosted Model
-
-If you are connecting to a model you've deployed on GKE, provide its full prediction URL.
-
-```python
-# The full URL of your model's prediction endpoint on GKE
-GKE_MODEL_ENDPOINT_URL = "http://your-gke-service.example.com/predict"
-
-# (Optional) If your GKE service requires an API key for authorization,
-# set it as an environment variable for security.
-# In your terminal:
-# export GKE_MODEL_API_KEY="your-secret-key"
-```
+    - `GCP_PROJECT_ID`: Your Google Cloud project ID.
+    - `GCP_LOCATION`: The region for your project (e.g., `us-central1`).
+    - `VERTEX_AI_CUSTOM_ENDPOINT_ID`: The ID of your custom model on a Vertex AI Endpoint. You can find this in the Cloud Console.
+    - `GKE_MODEL_ENDPOINT_URL`: The full prediction URL for your model hosted on GKE.
+    - `GKE_MODEL_API_KEY`: (Optional) If your GKE service requires an API key for authorization, add it here.
 
 ### **IMPORTANT: Adapt API Payloads**
 
@@ -114,10 +94,67 @@ The boilerplate code includes placeholder logic for sending data to your custom 
 
 ## Running the Application
 
-Once you have completed the configuration, you can run the application.
+Once your configuration is set, you are ready to launch the application.
+
+### 1. Ensure Configuration is Ready
+
+Before you start, double-check that you have:
+- Activated your Python virtual environment (`source .venv/bin/activate`).
+- Created and correctly filled out your `.env` file with your project and endpoint details.
+
+### 2. Launch the App
+
+We recommend using the `gradio` command to run the application, as it provides helpful features like automatic reloading when you change the code.
+
+```bash
+gradio app.py
+```
+
+Alternatively, you can run the application using the standard Python interpreter:
 
 ```bash
 python app.py
 ```
 
-The application will start, and you will see a local URL in your terminal (e.g., `http://127.0.0.1:7860`). Open this URL in your web browser to access the chat interface. You can now select a model backend from the radio buttons and start a conversation.
+### 3. Access the Interface
+
+Once the application is running, you will see output in your terminal similar to this:
+
+```
+Running on local URL:  http://127.0.0.1:7860
+```
+
+Open the local URL in your web browser to access the chat interface. You can now select a model backend from the radio buttons and start a conversation.
+
+## Troubleshooting
+
+Here are a few common issues you might encounter:
+
+*   **Authentication Errors**: If you see errors related to permissions or credentials (e.g., `PermissionDenied: 403`), it usually means your local environment is not authenticated correctly with Google Cloud.
+    *   **Solution**: Re-run `gcloud auth application-default login` and ensure you are logged in with an account that has the "Vertex AI User" role on your GCP project.
+
+*   **Model Not Found / Endpoint Not Found**: If you get an error saying a model or endpoint could not be found, double-check your `.env` file.
+    *   **Solution**: Ensure that `GCP_PROJECT_ID`, `VERTEX_AI_CUSTOM_ENDPOINT_ID`, and other configuration variables are correct and do not have any typos.
+
+*   **Incorrect API Response**: If the application runs but you get unexpected output or errors when you chat with a custom model, it's likely that the API payload in `app.py` does not match what your model expects.
+    *   **Solution**: As mentioned in the "Configuration" section, you must adapt the `instances` payload and the response parsing logic in the `chat_with_vertex_custom_model` and `chat_with_gke_model` functions to match your specific model's API contract.
+
+## Deploying to Cloud Run
+
+This application is configured for automated deployment to Google Cloud Run using Cloud Build.
+
+To build and deploy the application, run the following command from the root of the project directory:
+
+```bash
+gcloud builds submit --config cloudbuild.yaml \
+  --substitutions=_LOCATION="us-central1",_REPOSITORY="ai-crash-lab",_IMAGE="math-tutor",_SERVICE_NAME="math-tutor-service",_REGION="us-central1"
+```
+
+This command will:
+1.  Submit the current directory to Google Cloud Build.
+2.  Execute the steps defined in `cloudbuild.yaml`.
+3.  Build the Docker container image.
+4.  Push the image to Google Artifact Registry.
+5.  Deploy the image to a new or existing service on Cloud Run.
+
+Once the deployment is complete, Cloud Build will output the URL of your deployed service.
