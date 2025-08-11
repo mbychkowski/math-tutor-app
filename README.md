@@ -2,17 +2,6 @@
 
 This project is a boilerplate for a conversational AI chat application with a Gradio-based web interface. It is designed to be flexible and can connect to multiple model backends, allowing you to easily switch between them.
 
-## Features
-
-- **Multiple Backends**: Seamlessly switch between three different model backends:
-    1.  A standard **Gemini** model on Vertex AI.
-    2.  A custom model deployed to a **Vertex AI Endpoint**.
-    3.  A self-hosted model running on **Google Kubernetes Engine (GKE)**.
-- **Modern UI**: A clean and responsive chat interface powered by Gradio.
-- **Streaming Support**: Demonstrates how to handle streaming responses for a real-time chat experience.
-- **Secure Authentication**: Uses Google Cloud's Application Default Credentials (ADC) for secure access to Vertex AI.
-- **Configuration-Driven**: Easily configure endpoints and project settings in a single file.
-
 ## Prerequisites
 
 Before you begin, ensure you have the following installed:
@@ -20,6 +9,10 @@ Before you begin, ensure you have the following installed:
 - **Python 3.8+**
 - **pip** (Python package installer)
 - **Google Cloud SDK** (the `gcloud` command-line tool)
+- **Multiple Backends pre-configured**: This app seamlessly switches between three different model backends:
+    1.  A standard **Gemini** model on Vertex AI.
+    2.  A custom model deployed to a **Vertex AI Endpoint**.
+    3.  A self-hosted model running on **Google Kubernetes Engine (GKE)**.
 
 ## Setup and Installation
 
@@ -77,9 +70,9 @@ This is the most important step. All configuration is handled via a `.env` file 
 
     - `GCP_PROJECT_ID`: Your Google Cloud project ID.
     - `GCP_LOCATION`: The region for your project (e.g., `us-central1`).
+    - `VERTEX_AI_GEMINI_MODEL_NAME`: The name of your Gemini model on Vertex AI (e.g. `gemini-2.5-flash`).
     - `VERTEX_AI_CUSTOM_ENDPOINT_ID`: The ID of your custom model on a Vertex AI Endpoint. You can find this in the Cloud Console.
     - `GKE_MODEL_ENDPOINT_URL`: The full prediction URL for your model hosted on GKE.
-    - `GKE_MODEL_API_KEY`: (Optional) If your GKE service requires an API key for authorization, add it here.
 
 ### **IMPORTANT: Adapt API Payloads**
 
