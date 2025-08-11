@@ -100,13 +100,13 @@ Before you start, double-check that you have:
 We recommend using the `gradio` command to run the application, as it provides helpful features like automatic reloading when you change the code.
 
 ```bash
-gradio app.py
+gradio src/app.py
 ```
 
 Alternatively, you can run the application using the standard Python interpreter:
 
 ```bash
-python app.py
+python src/app.py
 ```
 
 ### 3. Access the Interface
