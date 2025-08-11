@@ -65,12 +65,18 @@ async def chat_with_vertex_custom_model(message: str, history: list):
 
         instances = [{"prompt": message}]
 
-        full_response = ""
         response_stream = endpoint.predict(instances=instances)
-        for response in response_stream.predictions:
-            if response:
-                full_response += response
-                yield full_response
+        
+        full_response = "".join(response_stream.predictions)
+
+        if "Output:" in full_response:
+            # The model is returning the prompt and then the output, so we parse it.
+            output = full_response.split("Output:")[1].strip()
+            yield output
+        else:
+            # Fallback for models that might not follow the "Output:" format
+            yield full_response
+
     except Exception as e:
         yield f"Error calling Vertex AI Endpoint: {e}"
 
