@@ -63,23 +63,25 @@ async def chat_with_vertex_custom_model(message: str, history: list):
     try:
         endpoint = Endpoint(VERTEX_AI_CUSTOM_ENDPOINT_ID)
 
-        instances = [{"prompt": message}]
+        # Use a dictionary for instances
+        instances = [{"prompt": message, "max_tokens": 512}]
 
-        response_stream = endpoint.predict(instances=instances)
-        
-        full_response = "".join(response_stream.predictions)
+        # Make the prediction (no await here)
+        response = endpoint.predict(instances=instances)
 
-        if "Output:" in full_response:
-            # The model is returning the prompt and then the output, so we parse it.
-            output = full_response.split("Output:")[1].strip()
-            yield output
-        else:
-            # Fallback for models that might not follow the "Output:" format
-            yield full_response
+        full_response = ""
+        for prediction in response.predictions:
+            if isinstance(prediction, str):
+                full_response += prediction
+
+                output_split = full_response.split("Output:")
+                final_answer_split = output_split[1].split("Final Answer:")
+
+                yield final_answer_split[0]
 
     except Exception as e:
-        yield f"Error calling Vertex AI Endpoint: {e}"
-
+        print(f"An error occurred: {e}")
+        yield f"An error occurred with the Vertex AI custom model: {e}"
 
 async def chat_with_gke_model(message: str, history: list):
     """
@@ -126,7 +128,6 @@ MODEL_DISPATCHER = {
 async def chat_handler(message: str, history: list, model: str):
     chat_function = MODEL_DISPATCHER.get(model)
     if chat_function:
-        # Use 'async for' since all our chat functions are now async generators
         async for chunk in chat_function(message, history):
             yield chunk
     else:

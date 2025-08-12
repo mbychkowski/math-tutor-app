@@ -1,0 +1,7 @@
+type: object
+properties:
+  output:
+    type: string
+    description: The final answer extracted from the model's response.
+required:
+  - output
