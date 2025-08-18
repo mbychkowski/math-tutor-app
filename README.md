@@ -134,46 +134,54 @@ Here are a few common issues you might encounter:
 
 ## Deploying to Cloud Run
 
-### Set IAM permissions
+Deploying to Cloud Run provides a scalable, serverless environment for your application. Below are two common methods for deployment.
+
+# Make sure to set these environment variables first
+
+```
+export PROJECT_ID=$(gcloud config get-value project)
+export REGION="us-central1" # Or your preferred region
+```
+
+### 1. One-Time Setup: Granting IAM Permissions
+
+Before your first deployment, you must grant the default Compute Engine service account the necessary permissions to interact with Vertex AI. This allows your Cloud Run service to call the Gemini and custom model APIs.
 
 ```bash
-gcloud beta run services add-iam-policy-binding \
-  math-tutor-service \
-  --region=us-central1 \
-  --member=allUsers \
-  --role=roles/run.invoker
-
-```bash
+# Replace $GCP_PROJECT_ID with your actual Google Cloud Project ID
 gcloud projects add-iam-policy-binding $GCP_PROJECT_ID \
     --member="serviceAccount:$(gcloud projects describe $GCP_PROJECT_ID --format='value(projectNumber)')-compute@developer.gserviceaccount.com" \
-    --role="roles/aiplatform.user" \
-    --condition="None"
+    --role="roles/aiplatform.user"
 ```
 
-With Cloud Run you can quickly build and deploy your application in a single command.
+### 2. Choose a Deployment Method
+
+You can deploy directly from your local machine or automate the process using Cloud Build.
+
+#### Option A: Direct Deployment from Source
+
+This method builds and deploys your application in a single step, which is ideal for quick tests and iterative development.
+
+The `gcloud run deploy` command with the `--source` flag tells Cloud Run to take your current directory, build a container image from it using the `Dockerfile`, and deploy that image to a new service.
 
 ```bash
-gcloud run deploy --source ./ \
-  --region $_REGION \
+gcloud run deploy math-tutor-service \
+  --source ./ \
+  --region $REGION \
   --port 7860 \
   --allow-unauthenticated \
-  --set-env-vars GCP_PROJECT_ID=$PROJECT_ID,GCP_LOCATION=$LOCATION,VERTEX_AI_CUSTOM_ENDPOINT_ID=6826686277442600960
+  --set-env-vars=GCP_PROJECT_ID=$GCP_PROJECT_ID,GCP_LOCATION=$REGION,VERTEX_AI_CUSTOM_ENDPOINT_ID=682668627744260096,GKE_INFERENCE_ENDPOINT_URL=http://127.0.0.1:8000/v1/chat/completions
 ```
+**Note:** The `--allow-unauthenticated` flag makes the service publicly accessible. If you omit this, you will need to manually grant access after deployment.
 
-Alternatively. this application is configured for automated deployment to Google Cloud Run using Cloud Build.
+#### Option B: Automated Deployment with Cloud Build
 
-To build and deploy the application, run the following command from the root of the project directory:
+This method uses a `cloudbuild.yaml` configuration file to define a repeatable, automated build and deployment pipeline. This is the recommended approach for production environments.
+
+`gcloud builds submit` sends your code to Cloud Build, which then executes the steps in your `cloudbuild.yaml` file. This process builds the Docker image, pushes it to Artifact Registry for storage, and then deploys it to Cloud Run, ensuring a consistent deployment every time.
 
 ```bash
 gcloud builds submit --config cloudbuild.yaml \
-  --substitutions=_LOCATION="us-central1",_REPOSITORY="ai-crash-lab",_IMAGE="math-tutor",_SERVICE_NAME="math-tutor-service",_REGION="us-central1"
+  --substitutions=_LOCATION="us-central1",_SERVICE_NAME="math-tutor-service"
 ```
-
-This command will:
-1.  Submit the current directory to Google Cloud Build.
-2.  Execute the steps defined in `cloudbuild.yaml`.
-3.  Build the Docker container image.
-4.  Push the image to Google Artifact Registry.
-5.  Deploy the image to a new or existing service on Cloud Run.
-
-Once the deployment is complete, Cloud Build will output the URL of your deployed service.
+This command will use the substitutions defined in the `cloudbuild.yaml` file by default, but you can override them here if needed. Once complete, Cloud Build will output the URL of your deployed service.
