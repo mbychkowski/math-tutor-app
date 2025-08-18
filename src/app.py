@@ -14,12 +14,12 @@ load_dotenv()
 GCP_PROJECT_ID = os.getenv("GCP_PROJECT_ID", "YOUR_GCP_PROJECT_ID_HERE")
 GCP_LOCATION = os.getenv("GCP_LOCATION", "us-central1")
 
+# --- Vertex AI Gemini Model Configuration ---
+VERTEX_AI_GEMINI_MODEL_NAME = os.getenv("VERTEX_AI_GEMINI_MODEL_NAME", "gemini-2.5-flash")
+
 # --- Vertex AI Custom Endpoint Configuration ---
 # The ID of your deployed custom model endpoint in Vertex AI
 VERTEX_AI_CUSTOM_ENDPOINT_ID = os.getenv("VERTEX_AI_CUSTOM_ENDPOINT_ID", "YOUR_VERTEX_AI_ENDPOINT_ID_HERE")
-
-# --- Vertex AI Gemini Model Configuration ---
-VERTEX_AI_GEMINI_MODEL_NAME = os.getenv("VERTEX_AI_GEMINI_MODEL_NAME", "gemini-2.5-flash")
 
 # --- GKE Self-Hosted Model Configuration ---
 # The full URL of your model's prediction endpoint on GKE
@@ -52,7 +52,6 @@ async def chat_with_vertex_gemini(message: str, history: list):
                 yield full_response
     except Exception as e:
         yield f"An error occurred with the Vertex AI Gemini model: {e}"
-
 
 async def chat_with_vertex_custom_model(message: str, history: list):
     """Handles chat with a custom model on a Vertex AI Endpoint."""
