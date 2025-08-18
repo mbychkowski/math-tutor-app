@@ -134,7 +134,33 @@ Here are a few common issues you might encounter:
 
 ## Deploying to Cloud Run
 
-This application is configured for automated deployment to Google Cloud Run using Cloud Build.
+### Set IAM permissions
+
+```bash
+gcloud beta run services add-iam-policy-binding \
+  math-tutor-service \
+  --region=us-central1 \
+  --member=allUsers \
+  --role=roles/run.invoker
+
+```bash
+gcloud projects add-iam-policy-binding $GCP_PROJECT_ID \
+    --member="serviceAccount:$(gcloud projects describe $GCP_PROJECT_ID --format='value(projectNumber)')-compute@developer.gserviceaccount.com" \
+    --role="roles/aiplatform.user" \
+    --condition="None"
+```
+
+With Cloud Run you can quickly build and deploy your application in a single command.
+
+```bash
+gcloud run deploy --source ./ \
+  --region $_REGION \
+  --port 7860 \
+  --allow-unauthenticated \
+  --set-env-vars GCP_PROJECT_ID=$PROJECT_ID,GCP_LOCATION=$LOCATION,VERTEX_AI_CUSTOM_ENDPOINT_ID=6826686277442600960
+```
+
+Alternatively. this application is configured for automated deployment to Google Cloud Run using Cloud Build.
 
 To build and deploy the application, run the following command from the root of the project directory:
 

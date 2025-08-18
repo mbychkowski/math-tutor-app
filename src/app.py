@@ -155,7 +155,6 @@ with gr.Blocks(
     gr.ChatInterface(
         fn=chat_handler,
         additional_inputs=[model_choice],
-        flagging_mode="manual",
         examples=[
             [
                 "Expand and simplify the following polynomial expression: (2x−3)^2(x+4). Please show the steps of your expansion and combination of like terms.",
