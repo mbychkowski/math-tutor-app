@@ -1,0 +1,10 @@
+What are the main differences between Python 2 and Python 3?
+Explain the concept of inheritance in object-oriented programming.
+How does the Google Kubernetes Engine (GKE) work?
+What is a generative model?
+Describe the steps involved in training a custom model on Vertex AI.
+What are the advantages of using a self-hosted model on GKE?
+Explain the difference between fine-tuning and transfer learning.
+How do you deploy a machine learning model to a Vertex AI Endpoint?
+What are the key considerations when choosing a model backend for a chat application?
+Can you provide code examples of using the Vertex AI and GKE models?
