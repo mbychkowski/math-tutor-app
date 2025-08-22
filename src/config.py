@@ -5,13 +5,13 @@ SAMPLE_QUESTIONS_FILE = "src/sample_questions.txt"
 
 DEFAULT_QUESTIONS = [
     [
-        "Expand and simplify the following polynomial expression: (2x−3)^2(x+4). Please show the steps of your expansion and combination of like terms.",
+        "What are the main differences between Python 2 and Python 3?",
     ],
     [
-        "Given the following two data vectors, A = [3, 8, 5, 12] and B = [4, 6, 7, 9], Calculate the dot product of A and B.",
+        "Explain the concept of inheritance in object-oriented programming.",
     ],
     [
-        "I'm looking for a number with the following properties: (1) It is a prime number between 60 and 90. (2) The sum of its digits is 13. (3) If you reverse its digits, the new number is also a prime number. What is the number?",
+        "How does the Google Kubernetes Engine (GKE) work?",
     ],
 ]
 

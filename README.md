@@ -177,7 +177,7 @@ gcloud run deploy math-tutor-service \
   --region $LOCATION \
   --port 7860 \
   --allow-unauthenticated \
-  --set-env-vars=PROJECT_ID=$PROJECT_ID,LOCATION=$LOCATION,VERTEX_AI_ENDPOINT_ID=682668627744260096,GKE_INFERENCE_ENDPOINT_URL=http://127.0.0.1:8000/v1/chat/completions
+  --set-env-vars=PROJECT_ID=$PROJECT_ID,LOCATION=$LOCATION,VERTEX_AI_ENDPOINT_ID=$VERTEX_AI_ENDPOINT_ID$,GKE_INFERENCE_ENDPOINT_URL=http://127.0.0.1:8000/v1/chat/completions
 ```
 **Note:** The `--allow-unauthenticated` flag makes the service publicly accessible. If you omit this, you will need to manually grant access after deployment.
 
