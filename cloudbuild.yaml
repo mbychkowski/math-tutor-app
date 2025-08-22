@@ -19,7 +19,7 @@ steps:
   - 'managed'
   - '--allow-unauthenticated'
   - '--set-env-vars'
-  - 'GCP_PROJECT_ID=$PROJECT_ID,GCP_LOCATION=$_LOCATION'
+  - 'PROJECT_ID=$PROJECT_ID,LOCATION=$_LOCATION'
 images:
 - '$_LOCATION-docker.pkg.dev/$PROJECT_ID/$_REPOSITORY/$_IMAGE:latest'
 substitutions:
@@ -27,3 +27,4 @@ substitutions:
   _REPOSITORY: ai-crash-lab
   _IMAGE: math-tutor
   _SERVICE_NAME: math-tutor-service
+

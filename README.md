@@ -68,10 +68,10 @@ This is the most important step. All configuration is handled via a `.env` file 
 2.  **Edit the `.env` file**:
     Open the newly created `.env` file and fill in the values for your Google Cloud project and model endpoints.
 
-    - `GCP_PROJECT_ID`: Your Google Cloud project ID.
-    - `GCP_LOCATION`: The region for your project (e.g., `us-central1`).
+    - `PROJECT_ID`: Your Google Cloud project ID.
+    - `LOCATION`: The region for your project (e.g., `us-central1`).
     - `VERTEX_AI_GEMINI_MODEL_NAME`: The name of your Gemini model on Vertex AI (e.g. `gemini-2.5-flash`).
-    - `VERTEX_AI_CUSTOM_ENDPOINT_ID`: The ID of your custom model on a Vertex AI Endpoint. You can find this in the Cloud Console.
+    - `VERTEX_AI_ENDPOINT_ID`: The ID of your custom model on a Vertex AI Endpoint. You can find this in the Cloud Console.
     - `GKE_MODEL_ENDPOINT_URL`: The full prediction URL for your model hosted on GKE.
 
 ### **IMPORTANT: Adapt API Payloads**
@@ -119,6 +119,13 @@ Running on local URL:  http://127.0.0.1:7860
 
 Open the local URL in your web browser to access the chat interface. You can now select a model backend from the radio buttons and start a conversation.
 
+### Updating Sample Questions
+
+The sample questions that appear in the Gradio user interface can be customized.
+To change them, edit the `src/sample_questions.txt` file. Each question should be on its own line.
+
+The application will automatically load these questions on startup. If the file is not found or is empty, it will fall back to a default set of questions defined in `src/config.py`.
+
 ## Troubleshooting
 
 Here are a few common issues you might encounter:
@@ -127,7 +134,7 @@ Here are a few common issues you might encounter:
     *   **Solution**: Re-run `gcloud auth application-default login` and ensure you are logged in with an account that has the "Vertex AI User" role on your GCP project.
 
 *   **Model Not Found / Endpoint Not Found**: If you get an error saying a model or endpoint could not be found, double-check your `.env` file.
-    *   **Solution**: Ensure that `GCP_PROJECT_ID`, `VERTEX_AI_CUSTOM_ENDPOINT_ID`, and other configuration variables are correct and do not have any typos.
+    *   **Solution**: Ensure that `PROJECT_ID`, `VERTEX_AI_ENDPOINT_ID`, and other configuration variables are correct and do not have any typos.
 
 *   **Incorrect API Response**: If the application runs but you get unexpected output or errors when you chat with a custom model, it's likely that the API payload in `app.py` does not match what your model expects.
     *   **Solution**: As mentioned in the "Configuration" section, you must adapt the `instances` payload and the response parsing logic in the `chat_with_vertex_custom_model` and `chat_with_gke_model` functions to match your specific model's API contract.
@@ -140,7 +147,7 @@ Deploying to Cloud Run provides a scalable, serverless environment for your appl
 
 ```
 export PROJECT_ID=$(gcloud config get-value project)
-export REGION="us-central1" # Or your preferred region
+export LOCATION="us-central1" # Or your preferred region
 ```
 
 ### 1. One-Time Setup: Granting IAM Permissions
@@ -148,9 +155,9 @@ export REGION="us-central1" # Or your preferred region
 Before your first deployment, you must grant the default Compute Engine service account the necessary permissions to interact with Vertex AI. This allows your Cloud Run service to call the Gemini and custom model APIs.
 
 ```bash
-# Replace $GCP_PROJECT_ID with your actual Google Cloud Project ID
-gcloud projects add-iam-policy-binding $GCP_PROJECT_ID \
-    --member="serviceAccount:$(gcloud projects describe $GCP_PROJECT_ID --format='value(projectNumber)')-compute@developer.gserviceaccount.com" \
+# The $PROJECT_ID variable should be set to your Google Cloud Project ID
+gcloud projects add-iam-policy-binding $PROJECT_ID \
+    --member="serviceAccount:$(gcloud projects describe $PROJECT_ID --format='value(projectNumber)')-compute@developer.gserviceaccount.com" \
     --role="roles/aiplatform.user"
 ```
 
@@ -167,10 +174,10 @@ The `gcloud run deploy` command with the `--source` flag tells Cloud Run to take
 ```bash
 gcloud run deploy math-tutor-service \
   --source ./ \
-  --region $REGION \
+  --region $LOCATION \
   --port 7860 \
   --allow-unauthenticated \
-  --set-env-vars=GCP_PROJECT_ID=$GCP_PROJECT_ID,GCP_LOCATION=$REGION,VERTEX_AI_CUSTOM_ENDPOINT_ID=682668627744260096,GKE_INFERENCE_ENDPOINT_URL=http://127.0.0.1:8000/v1/chat/completions
+  --set-env-vars=PROJECT_ID=$PROJECT_ID,LOCATION=$LOCATION,VERTEX_AI_ENDPOINT_ID=682668627744260096,GKE_INFERENCE_ENDPOINT_URL=http://127.0.0.1:8000/v1/chat/completions
 ```
 **Note:** The `--allow-unauthenticated` flag makes the service publicly accessible. If you omit this, you will need to manually grant access after deployment.
 
@@ -184,4 +191,6 @@ This method uses a `cloudbuild.yaml` configuration file to define a repeatable, 
 gcloud builds submit --config cloudbuild.yaml \
   --substitutions=_LOCATION="us-central1",_SERVICE_NAME="math-tutor-service"
 ```
-This command will use the substitutions defined in the `cloudbuild.yaml` file by default, but you can override them here if needed. Once complete, Cloud Build will output the URL of your deployed service.
+This command will use the substitutions defined in the `cloudbuild.yaml` file by default, but you can override them here if needed. You can also edit the `substitutions` block in `cloudbuild.yaml` directly to set default values.
+
+Once complete, Cloud Build will output the URL of your deployed service.

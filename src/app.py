@@ -4,6 +4,7 @@ import httpx
 from dotenv import load_dotenv
 import vertexai
 from vertexai.generative_models import GenerativeModel
+import config
 from google.cloud.aiplatform import Endpoint
 
 # --- Load Environment Variables ---
@@ -11,31 +12,29 @@ from google.cloud.aiplatform import Endpoint
 load_dotenv()
 
 # --- General Configuration ---
-GCP_PROJECT_ID = os.getenv("GCP_PROJECT_ID", "YOUR_GCP_PROJECT_ID_HERE")
-GCP_LOCATION = os.getenv("GCP_LOCATION", "us-central1")
+PROJECT_ID = os.getenv("PROJECT_ID", "YOUR_GCP_PROJECT_ID_HERE")
+LOCATION = os.getenv("LOCATION", "us-central1")
 
 # --- Vertex AI Gemini Model Configuration ---
 VERTEX_AI_GEMINI_MODEL_NAME = os.getenv("VERTEX_AI_GEMINI_MODEL_NAME", "gemini-2.5-flash")
 
 # --- Vertex AI Custom Endpoint Configuration ---
 # The ID of your deployed custom model endpoint in Vertex AI
-VERTEX_AI_CUSTOM_ENDPOINT_ID = os.getenv("VERTEX_AI_CUSTOM_ENDPOINT_ID", "YOUR_VERTEX_AI_ENDPOINT_ID_HERE")
+VERTEX_AI_ENDPOINT_ID = os.getenv("VERTEX_AI_ENDPOINT_ID", "YOUR_VERTEX_AI_ENDPOINT_ID_HERE")
 
 # --- GKE Self-Hosted Model Configuration ---
 # The full URL of your model's prediction endpoint on GKE
 GKE_MODEL_ENDPOINT_URL = os.getenv("GKE_MODEL_ENDPOINT_URL", "http://127.0.0.1:8000/v1/chat/completions")
-VLLM_MODEL_NAME = os.getenv("VLLM_MODEL_NAME", "<your model name>")
-
 
 # --- Initialization ---
-if GCP_PROJECT_ID == "YOUR_GCP_PROJECT_ID_HERE":
+if PROJECT_ID == "YOUR_GCP_PROJECT_ID_HERE":
     # This will be caught by the chat handler to display a nice error in the UI
     # instead of crashing the application on startup.
-    print("🔴 WARNING: GCP_PROJECT_ID is not set. The application will not work correctly.")
-    print("Please update the GCP_PROJECT_ID in your .env file.")
+    print("🔴 WARNING: PROJECT_ID is not set. The application will not work correctly.")
+    print("Please update the PROJECT_ID in your .env file.")
 
 # Initialize the Vertex AI client
-vertexai.init(project=GCP_PROJECT_ID, location=GCP_LOCATION)
+vertexai.init(project=PROJECT_ID, location=LOCATION)
 
 # --- Model Backend Logic ---
 async def chat_with_vertex_gemini(message: str, history: list):
@@ -55,12 +54,12 @@ async def chat_with_vertex_gemini(message: str, history: list):
 
 async def chat_with_vertex_custom_model(message: str, history: list):
     """Handles chat with a custom model on a Vertex AI Endpoint."""
-    if VERTEX_AI_CUSTOM_ENDPOINT_ID == "YOUR_VERTEX_AI_ENDPOINT_ID_HERE":
-        yield "🔴 Please configure the VERTEX_AI_CUSTOM_ENDPOINT_ID."
+    if VERTEX_AI_ENDPOINT_ID == "YOUR_VERTEX_AI_ENDPOINT_ID_HERE":
+        yield "🔴 Please configure the VERTEX_AI_ENDPOINT_ID."
         return
 
     try:
-        endpoint = Endpoint(VERTEX_AI_CUSTOM_ENDPOINT_ID)
+        endpoint = Endpoint(VERTEX_AI_ENDPOINT_ID)
 
         # Use a dictionary for instances
         instances = [{"prompt": message, "max_tokens": 512}]
@@ -93,7 +92,6 @@ async def chat_with_gke_model(message: str, history: list):
     messages = [{"role": "user", "content": message}]
 
     payload = {
-        "model": VLLM_MODEL_NAME,
         "messages": messages,
     }
     headers = {"Content-Type": "application/json"}
@@ -119,8 +117,8 @@ async def chat_with_gke_model(message: str, history: list):
 # A mapping from the UI choice to the backend function
 MODEL_DISPATCHER = {
     "Vertex AI (Gemini)": chat_with_vertex_gemini,
-    "Vertex AI (Fine Tuned)": chat_with_vertex_custom_model,
-    "GKE (Fine Tuned)": chat_with_gke_model,
+    "Vertex AI (self-hosted)": chat_with_vertex_custom_model,
+    "GKE (self-hosted)": chat_with_gke_model,
 }
 
 
@@ -136,7 +134,7 @@ async def chat_handler(message: str, history: list, model: str):
 # --- Gradio UI Layout ---
 with gr.Blocks(
     theme=gr.themes.Soft(primary_hue="blue", secondary_hue="sky"),
-    css=".gradio-container {max-width: 800px; margin: auto;}",
+    css=config.CSS,
 ) as demo:
     gr.Markdown(
         """
@@ -155,21 +153,8 @@ with gr.Blocks(
     gr.ChatInterface(
         fn=chat_handler,
         additional_inputs=[model_choice],
-        examples=[
-            [
-                "Expand and simplify the following polynomial expression: (2x−3)^2(x+4). Please show the steps of your expansion and combination of like terms.",
-                "Vertex AI (Gemini)",
-            ],
-            [
-                "Given the following two data vectors, A = [3, 8, 5, 12] and B = [4, 6, 7, 9], Calculate the dot product of A and B.",
-                "Vertex AI (Fine Tuned)",
-            ],
-            [
-                "I'm looking for a number with the following properties: (1) It is a prime number between 60 and 90. (2) The sum of its digits is 13. (3) If you reverse its digits, the new number is also a prime number. What is the number?",
-                "GKE (Fine Tuned)",
-            ],
-        ],
-        title="🎓 Math Tutor",
+        examples=config.SAMPLE_QUESTIONS,
+        title=config.TITLE if config.TITLE else "✨ Intelli Demo App",
     )
 
 # --- Application Entry Point ---
