@@ -1,7 +1,6 @@
 import os
 
-
-SAMPLE_QUESTIONS_FILE = "src/sample_questions.txt"
+SAMPLE_QUESTIONS_FILE = os.path.join(os.path.dirname(__file__), "sample_questions.txt")
 
 DEFAULT_QUESTIONS = [
     [

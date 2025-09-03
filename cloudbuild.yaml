@@ -1,8 +1,8 @@
 steps:
 - name: 'gcr.io/cloud-builders/docker'
-  args: ['build', '-t', '$_LOCATION-docker.pkg.dev/$PROJECT_ID/$_REPOSITORY/$_IMAGE:latest', '.']
+  args: ['build', '-t', '$_REGION-docker.pkg.dev/$PROJECT_ID/$_REPOSITORY/$_IMAGE:latest', '.']
 - name: 'gcr.io/cloud-builders/docker'
-  args: ['push', '$_LOCATION-docker.pkg.dev/$PROJECT_ID/$_REPOSITORY/$_IMAGE:latest']
+  args: ['push', '$_REGION-docker.pkg.dev/$PROJECT_ID/$_REPOSITORY/$_IMAGE:latest']
 - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
   entrypoint: gcloud
   args:
@@ -10,20 +10,20 @@ steps:
   - 'deploy'
   - '$_SERVICE_NAME'
   - '--image'
-  - '$_LOCATION-docker.pkg.dev/$PROJECT_ID/$_REPOSITORY/$_IMAGE:latest'
+  - '$_REGION-docker.pkg.dev/$PROJECT_ID/$_REPOSITORY/$_IMAGE:latest'
   - '--region'
-  - '$_LOCATION'
+  - '$_REGION'
   - '--port'
   - '7860'
   - '--platform'
   - 'managed'
   - '--allow-unauthenticated'
   - '--set-env-vars'
-  - 'PROJECT_ID=$PROJECT_ID,LOCATION=$_LOCATION'
+  - 'PROJECT_ID=$PROJECT_ID,REGION=$_REGION'
 images:
-- '$_LOCATION-docker.pkg.dev/$PROJECT_ID/$_REPOSITORY/$_IMAGE:latest'
+- '$_REGION-docker.pkg.dev/$PROJECT_ID/$_REPOSITORY/$_IMAGE:latest'
 substitutions:
-  _LOCATION: us-central1
+  _REGION: us-central1
   _REPOSITORY: ai-crash-lab
   _IMAGE: math-tutor
   _SERVICE_NAME: math-tutor-service

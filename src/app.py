@@ -1,148 +1,139 @@
+import asyncio
 import os
+from typing import AsyncGenerator, List
+
 import gradio as gr
 import httpx
 from dotenv import load_dotenv
-import vertexai
-from vertexai.generative_models import GenerativeModel
-import config
 from google.cloud.aiplatform import Endpoint
+import vertexai
+from vertexai.generative_models import Content, GenerativeModel, Part
+
+import config
 
 # --- Load Environment Variables ---
-# Load variables from a .env file if it exists
 load_dotenv()
 
-# --- General Configuration ---
+# --- Configuration ---
 PROJECT_ID = os.getenv("PROJECT_ID", "YOUR_GCP_PROJECT_ID_HERE")
-LOCATION = os.getenv("LOCATION", "us-central1")
-
-# --- Vertex AI Gemini Model Configuration ---
+REGION = os.getenv("REGION", "us-central1")
 VERTEX_AI_GEMINI_MODEL_NAME = os.getenv("VERTEX_AI_GEMINI_MODEL_NAME", "gemini-2.5-flash")
-
-# --- Vertex AI Custom Endpoint Configuration ---
-# The ID of your deployed custom model endpoint in Vertex AI
 VERTEX_AI_ENDPOINT_ID = os.getenv("VERTEX_AI_ENDPOINT_ID", "YOUR_VERTEX_AI_ENDPOINT_ID_HERE")
-
-# --- GKE Self-Hosted Model Configuration ---
-# The full URL of your model's prediction endpoint on GKE
-GKE_MODEL_ENDPOINT_URL = os.getenv("GKE_MODEL_ENDPOINT_URL", "http://127.0.0.1:8000/v1/chat/completions")
+GKE_INFERENCE_ENDPOINT_URL = os.getenv("GKE_INFERENCE_ENDPOINT_URL", "http://your-gke-service.example.com/v1/chat/completions")
 
 # --- Initialization ---
-if PROJECT_ID == "YOUR_GCP_PROJECT_ID_HERE":
-    # This will be caught by the chat handler to display a nice error in the UI
-    # instead of crashing the application on startup.
-    print("🔴 WARNING: PROJECT_ID is not set. The application will not work correctly.")
-    print("Please update the PROJECT_ID in your .env file.")
+if PROJECT_ID != "YOUR_GCP_PROJECT_ID_HERE":
+    vertexai.init(project=PROJECT_ID, location=REGION)
+else:
+    print("⚠️ WARNING: PROJECT_ID is not set. The application will not work correctly.")
 
-# Initialize the Vertex AI client
-vertexai.init(project=PROJECT_ID, location=LOCATION)
+# --- Helper Function for History ---
+def format_gemini_history(history: List[List[str]]):
+    """Converts Gradio's history format to Gemini's format."""
+    gemini_history = []
+    for user_msg, model_msg in history:
+        gemini_history.append(Content(role="user", parts=[Part.from_text(user_msg)]))
+        gemini_history.append(Content(role="model", parts=[Part.from_text(model_msg)]))
+    return gemini_history
 
 # --- Model Backend Logic ---
-async def chat_with_vertex_gemini(message: str, history: list):
-    """Handles chat with a standard Gemini model on Vertex AI."""
+async def chat_with_vertex_gemini(message: str, history: List[List[str]]):
+    """Handles chat with a standard Gemini model on Vertex AI, maintaining history."""
     try:
         model = GenerativeModel(VERTEX_AI_GEMINI_MODEL_NAME)
-        chat = model.start_chat()  # History removed
+
+        gemini_history = format_gemini_history(history)
+        chat = model.start_chat(history=gemini_history)
         response = chat.send_message(message, stream=True)
 
-        full_response = ""
+        response_so_far = ""
         for chunk in response:
             if chunk.text:
-                full_response += chunk.text
-                yield full_response
-    except Exception as e:
-        yield f"An error occurred with the Vertex AI Gemini model: {e}"
+                response_so_far += chunk.text
 
-async def chat_with_vertex_custom_model(message: str, history: list):
+                yield history + [[message, response_so_far]]
+
+    except Exception as e:
+        error_msg = f"An error occurred with the Vertex AI Gemini model: {e}"
+        yield history + [[message, error_msg]]
+
+async def chat_with_vertex_custom_model(message: str, history: List[List[str]]):
     """Handles chat with a custom model on a Vertex AI Endpoint."""
     if VERTEX_AI_ENDPOINT_ID == "YOUR_VERTEX_AI_ENDPOINT_ID_HERE":
-        yield "🔴 Please configure the VERTEX_AI_ENDPOINT_ID."
+        yield history + [[message, "🚨 Please configure the VERTEX_AI_ENDPOINT_ID."]]
         return
 
     try:
         endpoint = Endpoint(VERTEX_AI_ENDPOINT_ID)
-
-        # Use a dictionary for instances
         instances = [{"prompt": message, "max_tokens": 512}]
 
-        # Make the prediction (no await here)
-        response = endpoint.predict(instances=instances)
+        response = await asyncio.to_thread(endpoint.predict, instances=instances)
 
         full_response = ""
         for prediction in response.predictions:
             if isinstance(prediction, str):
                 full_response += prediction
 
-                output_split = full_response.split("Output:")
-                final_answer_split = output_split[1].split("Final Answer:")
-
-                yield final_answer_split[0]
+        yield history + [[message, full_response]]
 
     except Exception as e:
-        print(f"An error occurred: {e}")
-        yield f"An error occurred with the Vertex AI custom model: {e}"
+        error_msg = f"An error occurred with the Vertex AI custom model: {e}"
+        yield history + [[message, error_msg]]
 
-async def chat_with_gke_model(message: str, history: list):
-    """
-    Handles chat with a self-hosted model on GKE using an async HTTP client.
-    """
-    if GKE_MODEL_ENDPOINT_URL == "http://your-gke-service.example.com/predict":
-        yield "🔴 Please configure the GKE_MODEL_ENDPOINT_URL."
+async def chat_with_gke_model(message: str, history: List[List[str]]):
+    """Handles chat with a self-hosted model on GKE."""
+    if GKE_INFERENCE_ENDPOINT_URL == "http://your-gke-service.example.com/v1/chat/completions":
+        yield history + [[message, "🚨 Please configure the GKE_INFERENCE_ENDPOINT_URL."]]
         return
 
-    messages = [{"role": "user", "content": message}]
-
-    payload = {
-        "messages": messages,
-    }
+    payload = {"messages": [{"role": "user", "content": message}]}
     headers = {"Content-Type": "application/json"}
+    final_response = ""
 
     try:
         async with httpx.AsyncClient(timeout=300) as client:
-            response = await client.post(
-                GKE_MODEL_ENDPOINT_URL, json=payload, headers=headers
-            )
+            response = await client.post(GKE_INFERENCE_ENDPOINT_URL, json=payload, headers=headers)
             response.raise_for_status()
             response_json = response.json()
-            content = response_json["choices"][0]["message"]["content"]
-            yield content
+            final_response = response_json["choices"][0]["message"]["content"]
+
+        yield history + [[message, final_response]]
 
     except httpx.HTTPStatusError as e:
-        yield f"Error calling GKE model: Received status {e.response.status_code} - {e.response.text}"
+        final_response = f"Error: Received status {e.response.status_code} - {e.response.text}"
     except httpx.RequestError as e:
-        yield f"Error calling GKE model: {e}"
-    except (KeyError, IndexError) as e:
-        yield f"Error: Unexpected response format from GKE model: {response.text}"
+        final_response = f"Error: Could not connect to GKE model: {e}"
+    except (KeyError, IndexError):
+        final_response = f"Error: Unexpected response format from GKE model."
 
 
-# A mapping from the UI choice to the backend function
+# --- Main Chat Dispatcher ---
 MODEL_DISPATCHER = {
     "Vertex AI (Gemini)": chat_with_vertex_gemini,
     "Vertex AI (self-hosted)": chat_with_vertex_custom_model,
     "GKE (self-hosted)": chat_with_gke_model,
 }
 
+async def chat_handler(message: str, history: List[List[str]], model: str):
+    if PROJECT_ID == "YOUR_GCP_PROJECT_ID_HERE":
+        yield history + [[message, "🚨 ERROR: GCP Project ID is not configured."]]
+        return
 
-async def chat_handler(message: str, history: list, model: str):
     chat_function = MODEL_DISPATCHER.get(model)
     if chat_function:
-        async for chunk in chat_function(message, history):
-            yield chunk
+        async for response in chat_function(message, history):
+            yield response
     else:
-        yield "🔴 Invalid model selection."
-
+        yield history + [[message, "🚨 Invalid model selection."]]
 
 # --- Gradio UI Layout ---
-with gr.Blocks(
-    theme=gr.themes.Soft(primary_hue="blue", secondary_hue="sky"),
-    css=config.CSS,
-) as demo:
+with gr.Blocks(theme=gr.themes.Soft(primary_hue="blue", secondary_hue="sky"), css=config.CSS) as demo:
     gr.Markdown(
         """
-        # Crash Courses in AI
+        # ✨ Intelli Demo App
         Select a model backend and start a conversation.
         """
     )
-
     with gr.Row():
         model_choice = gr.Radio(
             list(MODEL_DISPATCHER.keys()),
@@ -150,12 +141,24 @@ with gr.Blocks(
             value="Vertex AI (Gemini)",
         )
 
-    gr.ChatInterface(
-        fn=chat_handler,
-        additional_inputs=[model_choice],
-        examples=config.SAMPLE_QUESTIONS,
-        title=config.TITLE if config.TITLE else "✨ Intelli Demo App",
-    )
+    chatbot = gr.Chatbot(label="Conversation")
+
+    msg_textbox = gr.Textbox(placeholder="Type your question here...", label="Message")
+
+    with gr.Row():
+        submit_btn = gr.Button(value="▶️ Submit", variant="primary")
+        clear_btn = gr.ClearButton([msg_textbox, chatbot], value="🗑️ Clear Conversation")
+
+    gr.Examples(examples=config.SAMPLE_QUESTIONS, inputs=[msg_textbox], label="Example Questions")
+
+    # --- Event Handling Logic ---
+    submit_triggers = [msg_textbox.submit, submit_btn.click]
+    for trigger in submit_triggers:
+        trigger(
+            chat_handler,
+            [msg_textbox, chatbot, model_choice],
+            [chatbot],
+        ).then(lambda: gr.update(value=""), None, [msg_textbox], queue=False)
 
 # --- Application Entry Point ---
 if __name__ == "__main__":

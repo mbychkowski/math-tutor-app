@@ -69,7 +69,7 @@ This is the most important step. All configuration is handled via a `.env` file 
     Open the newly created `.env` file and fill in the values for your Google Cloud project and model endpoints.
 
     - `PROJECT_ID`: Your Google Cloud project ID.
-    - `LOCATION`: The region for your project (e.g., `us-central1`).
+    - `REGION`: The region for your project (e.g., `us-central1`).
     - `VERTEX_AI_GEMINI_MODEL_NAME`: The name of your Gemini model on Vertex AI (e.g. `gemini-2.5-flash`).
     - `VERTEX_AI_ENDPOINT_ID`: The ID of your custom model on a Vertex AI Endpoint. You can find this in the Cloud Console.
     - `GKE_MODEL_ENDPOINT_URL`: The full prediction URL for your model hosted on GKE.
@@ -147,7 +147,7 @@ Deploying to Cloud Run provides a scalable, serverless environment for your appl
 
 ```
 export PROJECT_ID=$(gcloud config get-value project)
-export LOCATION="us-central1" # Or your preferred region
+export REGION="us-central1" # Or your preferred region
 ```
 
 ### 1. One-Time Setup: Granting IAM Permissions
@@ -165,6 +165,26 @@ gcloud projects add-iam-policy-binding $PROJECT_ID \
 
 You can deploy directly from your local machine or automate the process using Cloud Build.
 
+*Find VertexAI Endpoints for self-hosted models in VertexAI*
+```sh
+gcloud ai endpoints list --region=${REGION}
+```
+
+find the desired ENDPOINT_ID:
+```sh
+export VERTEX_AI_ENDPOINT_ID=<ENDPOINT_ID>
+```
+
+*Find self-hosted model endpoint URL*
+```
+kubectl get svc
+```
+
+find the desired URL for your self-hosted model:
+```sh
+export GKE_INFERENCE_ENDPOINT_URL=http://<URL>/v1/chat/completions
+```
+
 #### Option A: Direct Deployment from Source
 
 This method builds and deploys your application in a single step, which is ideal for quick tests and iterative development.
@@ -173,11 +193,11 @@ The `gcloud run deploy` command with the `--source` flag tells Cloud Run to take
 
 ```bash
 gcloud run deploy math-tutor-service \
-  --source ./ \
-  --region $LOCATION \
+  --source ./src \
+  --region $REGION \
   --port 7860 \
   --allow-unauthenticated \
-  --set-env-vars=PROJECT_ID=$PROJECT_ID,LOCATION=$LOCATION,VERTEX_AI_ENDPOINT_ID=$VERTEX_AI_ENDPOINT_ID$,GKE_INFERENCE_ENDPOINT_URL=http://127.0.0.1:8000/v1/chat/completions
+  --set-env-vars=PROJECT_ID=$PROJECT_ID,REGION=$REGION,VERTEX_AI_ENDPOINT_ID=$VERTEX_AI_ENDPOINT_ID,GKE_INFERENCE_ENDPOINT_URL=$GKE_INFERENCE_ENDPOINT_URL
 ```
 **Note:** The `--allow-unauthenticated` flag makes the service publicly accessible. If you omit this, you will need to manually grant access after deployment.
 
@@ -189,7 +209,7 @@ This method uses a `cloudbuild.yaml` configuration file to define a repeatable, 
 
 ```bash
 gcloud builds submit --config cloudbuild.yaml \
-  --substitutions=_LOCATION="us-central1",_SERVICE_NAME="math-tutor-service"
+  --substitutions=_REGION="us-central1",_SERVICE_NAME="math-tutor-service"
 ```
 This command will use the substitutions defined in the `cloudbuild.yaml` file by default, but you can override them here if needed. You can also edit the `substitutions` block in `cloudbuild.yaml` directly to set default values.
 
