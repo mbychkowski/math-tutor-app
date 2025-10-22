@@ -69,12 +69,23 @@ async def chat_with_vertex_custom_model(message: str, history: List[List[str]]):
 
         response = await asyncio.to_thread(endpoint.predict, instances=instances)
 
-        full_response = ""
+        raw_response = ""
         for prediction in response.predictions:
             if isinstance(prediction, str):
-                full_response += prediction
+                raw_response += prediction
 
-        yield history + [[message, full_response]]
+        # Parse the templated response from the custom model
+        final_response = raw_response
+
+        # Split on the "Output:" marker
+        # We use split(..., 1) to only split on the first occurrence
+        if "Output:\n" in raw_response:
+            parts = raw_response.split("Output:\n", 1)
+            if len(parts) > 1:
+                # Get the text *after* "Output:\n" and strip whitespace
+                final_response = parts[1].strip()
+
+        yield history + [[message, final_response]]
 
     except Exception as e:
         error_msg = f"An error occurred with the Vertex AI custom model: {e}"
